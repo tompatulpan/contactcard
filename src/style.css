@@ -1,0 +1,24 @@
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, sans-serif; background: #f4f5f7; color: #1c1e21; }
+nav { display: flex; position: sticky; top: 0; background: #fff; border-bottom: 1px solid #d8dbe0; }
+nav button { flex: 1; padding: 12px; border: 0; background: none; font-size: 1rem; }
+nav button.active { border-bottom: 3px solid #2f6fed; font-weight: 600; }
+main { padding: 12px; max-width: 640px; margin: 0 auto; }
+input[type=text], input[type=search], textarea { width: 100%; padding: 8px; border: 1px solid #c4c8ce; border-radius: 6px; font: inherit; }
+button, .filebtn { padding: 8px 12px; border: 1px solid #c4c8ce; border-radius: 6px; background: #fff; font: inherit; cursor: pointer; }
+button.primary { background: #2f6fed; color: #fff; border-color: #2f6fed; }
+.row { display: flex; gap: 8px; margin: 12px 0; flex-wrap: wrap; }
+.field { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.field label.name { width: 6.5rem; flex: none; font-size: 0.9rem; }
+.field label.share { flex: none; font-size: 0.8rem; white-space: nowrap; }
+.banner { background: #fff3cd; border: 1px solid #ecd98a; padding: 8px; border-radius: 6px; }
+.hint { color: #5b6068; font-size: 0.85rem; }
+.card { background: #fff; border: 1px solid #d8dbe0; border-radius: 8px; padding: 10px; margin: 8px 0; cursor: pointer; }
+.card .meta { color: #5b6068; font-size: 0.8rem; }
+.badge { color: #1a7f37; font-weight: 600; font-size: 0.8rem; margin-left: 6px; }
+.detail { background: #fff; border: 2px solid #2f6fed; border-radius: 8px; padding: 12px; margin-top: 12px; }
+.detail dt { font-size: 0.8rem; color: #5b6068; margin-top: 6px; }
+.detail dd { margin: 0; word-break: break-word; }
+#diff { background: #fff; border: 1px solid #d8dbe0; border-radius: 8px; padding: 10px; }
+#diff .from { text-decoration: line-through; color: #a33; }
+#diff .to { color: #1a7f37; }

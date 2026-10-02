@@ -1,0 +1,321 @@
+import {
+  FIELD_KEYS,
+  FIELD_LABELS,
+  buildCardPayload,
+  diffMaster,
+  nextRev,
+  reduceUpdates,
+  sanitizeFields,
+  toVCard,
+} from './core.js';
+
+const webxdc = window.webxdc;
+const selfAddr = webxdc.selfAddr;
+const selfName = webxdc.selfName;
+
+const $ = (id) => document.getElementById(id);
+
+// Received data is untrusted: always build DOM with textContent, never innerHTML.
+function el(tag, props = {}, ...children) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) {
+    if (k === 'class') node.className = v;
+    else if (k.startsWith('on')) node.addEventListener(k.slice(2), v);
+    else node[k] = v;
+  }
+  for (const c of children) node.append(c);
+  return node;
+}
+
+const store = {
+  get(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw === null ? fallback : JSON.parse(raw);
+    } catch {
+      return fallback;
+    }
+  },
+  set(key, value) {
+    localStorage.setItem(key, JSON.stringify(value));
+  },
+};
+
+// localStorage is only a cache; the card directory is rebuilt from replayed updates.
+let master = store.get('dc_master', null) || {
+  format: 'deltacard-master',
+  v: 1,
+  rev: 0,
+  fields: { name: selfName, email: selfAddr },
+};
+let shareKeys = store.get('dc_share', null);
+const lastSeen = store.get('dc_lastSeen', 0);
+
+let cards = {};
+const cardSerial = {};
+let maxSerial = 0;
+let selectedAddr = null;
+
+const ownPublished = () => (cards[selfAddr] && !cards[selfAddr].revoked ? cards[selfAddr].fields : {});
+const currentShare = () => shareKeys ?? Object.keys(ownPublished());
+
+function formatDate(ms) {
+  return new Date(ms).toLocaleString(navigator.language, { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+function setStatus(text) {
+  $('status').textContent = text;
+}
+
+function downloadFile(name, text, mime) {
+  const url = URL.createObjectURL(new Blob([text], { type: mime }));
+  const a = el('a', { href: url, download: name });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+async function sendFileToChat(name, text, message) {
+  if (typeof webxdc.sendToChat !== 'function') {
+    setStatus('sendToChat is not available here.');
+    return;
+  }
+  try {
+    await webxdc.sendToChat({ file: { name, plainText: text }, text: message });
+  } catch (e) {
+    setStatus(`sendToChat failed: ${e}`);
+  }
+}
+
+const safeFileName = (s) => (s || 'contact').replace(/[^\w.-]+/g, '_').slice(0, 40);
+
+// ---- Contacts tab ----
+
+function primaryChannel(card) {
+  return card.fields.work_phone || card.fields.mobile || card.fields.email || '';
+}
+
+function renderContacts() {
+  const q = $('search').value.trim().toLowerCase();
+  const visible = Object.values(cards)
+    .filter((c) => !c.revoked)
+    .filter((c) => !q || [c.fields.name, c.fields.org, c.fields.title].some((v) => (v || '').toLowerCase().includes(q)))
+    .sort((a, b) => (a.fields.name || a.addr).localeCompare(b.fields.name || b.addr));
+
+  $('empty').hidden = Object.values(cards).some((c) => !c.revoked);
+  const list = $('list');
+  list.replaceChildren();
+  for (const card of visible) {
+    const isNew = card.addr !== selfAddr && cardSerial[card.addr] > lastSeen;
+    const title = el('div', {}, card.fields.name || card.addr);
+    if (card.addr === selfAddr) title.append(el('span', { class: 'meta' }, ' (you)'));
+    if (isNew) title.append(el('span', { class: 'badge' }, '🟢 Updated'));
+    list.append(
+      el(
+        'div',
+        { class: 'card', onclick: () => { selectedAddr = card.addr; renderContacts(); } },
+        title,
+        el('div', {}, primaryChannel(card)),
+        el('div', { class: 'meta' }, `Updated ${formatDate(card.rev)} · claimed by ${card.addr}`),
+      ),
+    );
+  }
+  renderDetail();
+}
+
+function renderDetail() {
+  const box = $('detail');
+  box.replaceChildren();
+  const card = selectedAddr && cards[selectedAddr];
+  if (!card || card.revoked) return;
+
+  const dl = el('dl');
+  for (const key of FIELD_KEYS) {
+    if (!card.fields[key]) continue;
+    dl.append(el('dt', {}, FIELD_LABELS[key]), el('dd', {}, card.fields[key]));
+  }
+  dl.append(el('dt', {}, 'Sender (claimed, not verified)'), el('dd', {}, card.addr));
+
+  const vcf = toVCard(card);
+  const fileName = `${safeFileName(card.fields.name)}.vcf`;
+  const row = el(
+    'div',
+    { class: 'row' },
+    el('button', { class: 'primary', onclick: () => downloadFile(fileName, vcf, 'text/vcard') }, '📥 Export to phone contacts'),
+  );
+  if (typeof webxdc.sendToChat === 'function') {
+    row.append(el('button', { onclick: () => sendFileToChat(fileName, vcf, card.fields.name || '') }, 'Send .vcf to a chat'));
+  }
+  box.append(el('div', { class: 'detail' }, dl, row));
+}
+
+// ---- My card tab ----
+
+function buildForm() {
+  const form = $('master-form');
+  form.replaceChildren();
+  const checked = new Set(currentShare());
+  for (const key of FIELD_KEYS) {
+    const input = el('input', { type: 'text', id: `f-${key}`, value: master.fields[key] || '' });
+    const share = el('input', { type: 'checkbox', id: `s-${key}`, checked: key === 'name' || checked.has(key), disabled: key === 'name' });
+    form.append(
+      el(
+        'div',
+        { class: 'field' },
+        el('label', { class: 'name', htmlFor: `f-${key}` }, FIELD_LABELS[key]),
+        input,
+        el('label', { class: 'share' }, share, ' share'),
+      ),
+    );
+  }
+}
+
+const readFormFields = () => sanitizeFields(Object.fromEntries(FIELD_KEYS.map((k) => [k, $(`f-${k}`).value.trim()])));
+const readShareKeys = () => FIELD_KEYS.filter((k) => k !== 'name' && $(`s-${k}`).checked);
+
+// Bumps master.rev only when the content actually changed.
+function commitForm() {
+  const fields = readFormFields();
+  if (JSON.stringify(fields) !== JSON.stringify(master.fields) || master.rev === 0) {
+    master = { ...master, rev: nextRev(master.rev, Date.now()), fields };
+    store.set('dc_master', master);
+  }
+  shareKeys = readShareKeys();
+  store.set('dc_share', shareKeys);
+}
+
+function publish() {
+  commitForm();
+  const rev = nextRev(cards[selfAddr]?.rev ?? 0, Date.now());
+  const payload = buildCardPayload(master, shareKeys, selfAddr, rev);
+  const count = new Set([...Object.keys(cards), selfAddr]).size;
+  webxdc.sendUpdate({ payload, info: `${selfName} updated their card`, summary: `${count} cards` }, '');
+  setStatus('Published to this chat.');
+  $('diff').hidden = true;
+}
+
+function renderDiff() {
+  const box = $('diff');
+  const published = cards[selfAddr];
+  if (!published || published.revoked) {
+    box.hidden = true;
+    return;
+  }
+  const changes = diffMaster(master, currentShare(), published.fields);
+  if (changes.length === 0) {
+    box.hidden = true;
+    return;
+  }
+  box.replaceChildren(el('strong', {}, 'Your master card changed. Update this chat?'));
+  for (const c of changes) {
+    box.append(
+      el('div', {}, `${FIELD_LABELS[c.key]}: `, el('span', { class: 'from' }, c.from || '(empty)'), ' → ', el('span', { class: 'to' }, c.to || '(removed)')),
+    );
+  }
+  box.append(el('div', { class: 'row' }, el('button', { class: 'primary', onclick: publish }, 'Publish update')));
+  box.hidden = false;
+}
+
+function importMaster(text) {
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    setStatus('Not valid JSON.');
+    return;
+  }
+  if (!data || data.format !== 'deltacard-master' || typeof data.fields !== 'object') {
+    setStatus('Not a DeltaCard master file.');
+    return;
+  }
+  const rev = Number.isFinite(data.rev) ? data.rev : 0;
+  if (master.rev > 0 && rev <= master.rev) {
+    setStatus('The imported master is not newer than the one here. Ignored.');
+    return;
+  }
+  master = { format: 'deltacard-master', v: 1, rev, fields: sanitizeFields(data.fields) };
+  store.set('dc_master', master);
+  buildForm();
+  setStatus('Master card imported.');
+  renderDiff();
+}
+
+function exportMaster() {
+  commitForm();
+  return JSON.stringify(master, null, 2);
+}
+
+// ---- Wiring ----
+
+function showTab(name) {
+  $('view-contacts').hidden = name !== 'contacts';
+  $('view-mycard').hidden = name !== 'mycard';
+  $('tab-contacts').classList.toggle('active', name === 'contacts');
+  $('tab-mycard').classList.toggle('active', name === 'mycard');
+}
+
+$('tab-contacts').onclick = () => showTab('contacts');
+$('tab-mycard').onclick = () => showTab('mycard');
+$('search').oninput = renderContacts;
+$('save-master').onclick = () => {
+  commitForm();
+  setStatus('Master card saved on this device.');
+  renderDiff();
+};
+$('publish').onclick = publish;
+$('export-master').onclick = () => downloadFile('deltacard-master.json', exportMaster(), 'application/json');
+$('import-file').onchange = async (e) => {
+  const file = e.target.files[0];
+  if (file) importMaster(await file.text());
+  e.target.value = '';
+};
+$('import-paste').onclick = () => importMaster($('import-text').value);
+$('spoof').onclick = () => {
+  const victim = Object.keys(cards).find((a) => a !== selfAddr) ?? 'victim@example.org';
+  const rev = nextRev(cards[victim]?.rev ?? 0, Date.now());
+  const payload = { t: 'card', v: 1, addr: victim, rev, fields: { name: `Spoofed by ${selfName}`, mobile: '000' } };
+  webxdc.sendUpdate({ payload, info: 'A card was updated' }, '');
+};
+
+if (typeof webxdc.sendToChat === 'function') {
+  $('export-master').after(
+    el('button', { type: 'button', onclick: () => sendFileToChat('deltacard-master.json', exportMaster(), 'My DeltaCard master') }, 'Send master to a chat'),
+  );
+}
+
+function saveLastSeen() {
+  store.set('dc_lastSeen', maxSerial);
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') saveLastSeen();
+});
+window.addEventListener('pagehide', saveLastSeen);
+
+// Until the user chooses, the share toggles mirror what the replayed own card already exposes.
+function syncShareBoxes() {
+  if (shareKeys !== null) return;
+  const published = new Set(Object.keys(ownPublished()));
+  for (const key of FIELD_KEYS) {
+    if (key !== 'name') $(`s-${key}`).checked = published.has(key);
+  }
+}
+
+function renderAll() {
+  syncShareBoxes();
+  renderContacts();
+  renderDiff();
+}
+
+buildForm();
+renderAll();
+
+webxdc.setUpdateListener((update) => {
+  maxSerial = Math.max(maxSerial, update.serial);
+  const next = reduceUpdates(cards, update.payload);
+  if (next !== cards) {
+    cards = next;
+    cardSerial[update.payload.addr] = update.serial;
+  }
+  if (update.serial === update.max_serial) renderAll();
+}, 0);

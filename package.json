@@ -1,0 +1,12 @@
+{
+  "name": "deltacard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Contact-card WebXDC app prototype for Delta Chat",
+  "scripts": {
+    "test": "node --test test/",
+    "dev": "npx @webxdc/webxdc-dev run ./src",
+    "build": "mkdir -p dist && rm -f dist/deltacard.xdc && cd src && zip -qr ../dist/deltacard.xdc . && echo built dist/deltacard.xdc"
+  }
+}

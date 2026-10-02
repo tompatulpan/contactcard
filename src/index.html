@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DeltaCard</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="webxdc.js"></script>
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <nav>
+    <button id="tab-contacts" class="active">Contacts</button>
+    <button id="tab-mycard">My card</button>
+  </nav>
+
+  <main id="view-contacts">
+    <input id="search" type="search" placeholder="Search name, organisation, title">
+    <div id="list"></div>
+    <p id="empty" class="hint" hidden>No cards yet. Ask others to publish theirs, or publish yours.</p>
+    <div id="detail"></div>
+  </main>
+
+  <main id="view-mycard" hidden>
+    <p class="banner">Everyone in this chat can see the checked fields.</p>
+    <form id="master-form"></form>
+    <div class="row">
+      <button id="save-master" type="button">Save master card</button>
+      <button id="publish" type="button" class="primary">Publish to this chat</button>
+    </div>
+    <p id="status" class="hint"></p>
+    <div id="diff" hidden></div>
+
+    <h3>Move master card</h3>
+    <div class="row">
+      <button id="export-master" type="button">Export master</button>
+      <label class="filebtn">Import file<input id="import-file" type="file" accept=".json,application/json" hidden></label>
+    </div>
+    <textarea id="import-text" rows="3" placeholder="Or paste exported master JSON here"></textarea>
+    <button id="import-paste" type="button">Import pasted JSON</button>
+
+    <details>
+      <summary>Debug</summary>
+      <p class="hint">Posts a card that claims another address. Shows that v1 cannot authenticate senders.</p>
+      <button id="spoof" type="button">Simulate spoofed card</button>
+    </details>
+  </main>
+</body>
+</html>
