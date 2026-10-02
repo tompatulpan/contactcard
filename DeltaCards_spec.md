@@ -102,7 +102,12 @@ There is no silent cross-chat broadcast. The flow is:
 
 ### F. Late joiners
 
-New members may not see earlier updates. This should be verified in Delta Chat. Provide a manual **Re-send my card** button. Do not auto-resend, to avoid spam.
+Tested in Delta Chat: a member added after the app message was sent does not see the app at all, and starting the app or publishing again in the old instance does not help.
+
+- **Resend (or forward) the app message** after adding the member. Both were reported to work, and the new member then sees the existing cards.
+- Show a short hint in the app: "After adding someone to the group, resend this app message."
+- Still to verify: whether Resend keeps one shared instance for old and new members, whether forwarding creates a separate instance, and whether Resend is limited to the app's original sender.
+- Not needed in v1: exporting and relaying the directory to migrate cards into a new instance. Revisit only if resend or forward turns out to lose the state.
 
 ## 6. Identity and trust
 
@@ -146,7 +151,7 @@ Languages: EN and SV, as in NostCard.
 ## 11. Open questions
 
 - Which export path works on all three platforms: `<a download>` or `sendToChat()`?
-- Do late joiners receive earlier updates?
+- Does Resend keep a single instance for old and new members, and can anyone other than the original sender use it?
 - What is the maximum update payload size?
 - Is a Saved Messages instance good enough as the "home" for the master file, or is a plain file simpler for users?
 - Should the master card include a PGP key, given that Delta Chat already handles its own encryption keys?
