@@ -30,6 +30,23 @@ export function sanitizeFields(fields) {
   return out;
 }
 
+// Default share toggles travel with the master file; `name` is always shared, so it is never listed.
+export function sanitizeShare(keys) {
+  if (!Array.isArray(keys)) return [];
+  return FIELD_KEYS.filter((k) => k !== 'name' && keys.includes(k));
+}
+
+export function parseMaster(data) {
+  if (!data || data.format !== 'deltacard-master' || typeof data.fields !== 'object' || data.fields === null) return null;
+  return {
+    format: 'deltacard-master',
+    v: 1,
+    rev: Number.isFinite(data.rev) ? data.rev : 0,
+    fields: sanitizeFields(data.fields),
+    share: sanitizeShare(data.share),
+  };
+}
+
 export function buildCardPayload(master, allowedFields, addr, rev) {
   const keys = new Set(['name', ...allowedFields]);
   const fields = {};

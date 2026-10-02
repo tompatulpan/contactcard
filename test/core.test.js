@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildCardPayload, diffMaster, nextRev, reduceUpdates, toVCard } from '../src/core.js';
+import { buildCardPayload, diffMaster, nextRev, parseMaster, reduceUpdates, toVCard } from '../src/core.js';
 
 const master = {
   format: 'deltacard-master',
@@ -118,4 +118,23 @@ test('vCard: empty fields are skipped and addr is the FN fallback', () => {
   assert.ok(vcf.includes('FN:a@x'));
   assert.ok(!vcf.includes('TEL'));
   assert.ok(!vcf.includes('EMAIL'));
+});
+
+test('master: default share toggles survive export and import, and are sanitized', () => {
+  const parsed = parseMaster({
+    format: 'deltacard-master',
+    rev: 5,
+    fields: { name: 'A', mobile: '1', junk: 'x' },
+    share: ['mobile', 'name', 'bogus', '__proto__'],
+  });
+  assert.deepEqual(parsed.share, ['mobile']);
+  assert.deepEqual(parsed.fields, { name: 'A', mobile: '1' });
+  assert.equal(parsed.rev, 5);
+});
+
+test('master: older files without share load with no defaults; invalid files are rejected', () => {
+  assert.deepEqual(parseMaster({ format: 'deltacard-master', rev: 1, fields: { name: 'A' } }).share, []);
+  assert.equal(parseMaster({ format: 'other', fields: {} }), null);
+  assert.equal(parseMaster({ format: 'deltacard-master', fields: null }), null);
+  assert.equal(parseMaster(null), null);
 });

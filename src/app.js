@@ -4,6 +4,7 @@ import {
   buildCardPayload,
   diffMaster,
   nextRev,
+  parseMaster,
   reduceUpdates,
   sanitizeFields,
   toVCard,
@@ -174,14 +175,15 @@ function buildForm() {
 const readFormFields = () => sanitizeFields(Object.fromEntries(FIELD_KEYS.map((k) => [k, $(`f-${k}`).value.trim()])));
 const readShareKeys = () => FIELD_KEYS.filter((k) => k !== 'name' && $(`s-${k}`).checked);
 
-// Bumps master.rev only when the content actually changed.
+// Bumps master.rev only when the content actually changed; share toggles never bump it.
 function commitForm() {
   const fields = readFormFields();
   if (JSON.stringify(fields) !== JSON.stringify(master.fields) || master.rev === 0) {
     master = { ...master, rev: nextRev(master.rev, Date.now()), fields };
-    store.set('dc_master', master);
   }
   shareKeys = readShareKeys();
+  master = { ...master, share: shareKeys };
+  store.set('dc_master', master);
   store.set('dc_share', shareKeys);
 }
 
@@ -225,17 +227,22 @@ function importMaster(text) {
     setStatus('Not valid JSON.');
     return;
   }
-  if (!data || data.format !== 'deltacard-master' || typeof data.fields !== 'object') {
+  const imported = parseMaster(data);
+  if (!imported) {
     setStatus('Not a DeltaCard master file.');
     return;
   }
-  const rev = Number.isFinite(data.rev) ? data.rev : 0;
-  if (master.rev > 0 && rev <= master.rev) {
+  if (master.rev > 0 && imported.rev <= master.rev) {
     setStatus('The imported master is not newer than the one here. Ignored.');
     return;
   }
-  master = { format: 'deltacard-master', v: 1, rev, fields: sanitizeFields(data.fields) };
+  master = imported;
   store.set('dc_master', master);
+  // Toggles chosen in this chat win over the imported defaults.
+  if (shareKeys === null && Object.keys(ownPublished()).length === 0) {
+    shareKeys = imported.share;
+    store.set('dc_share', shareKeys);
+  }
   buildForm();
   setStatus('Master card imported.');
   renderDiff();
