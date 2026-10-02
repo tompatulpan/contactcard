@@ -281,6 +281,19 @@ $('save-master').onclick = () => {
 };
 $('publish').onclick = publish;
 $('export-master').onclick = () => downloadFile('deltacard-master.json', exportMaster(), 'application/json');
+// importFiles opens Delta Chat's picker with recent attachments; the plain input is the fallback.
+$('import-file-btn').onclick = async () => {
+  if (typeof webxdc.importFiles !== 'function') {
+    $('import-file').click();
+    return;
+  }
+  try {
+    const [file] = await webxdc.importFiles({ extensions: ['.json'], mimeTypes: ['application/json'] });
+    if (file) importMaster(await file.text());
+  } catch (e) {
+    setStatus(`Import failed: ${e}`);
+  }
+};
 $('import-file').onchange = async (e) => {
   const file = e.target.files[0];
   if (file) importMaster(await file.text());

@@ -33,9 +33,11 @@
     <div id="diff" hidden></div>
 
     <h3>Move master card</h3>
+    <p class="hint">Tip: send your master card to your Saved Messages chat. It is your backup and moves with you to a new device.</p>
     <div class="row">
       <button id="export-master" type="button">Export master</button>
-      <label class="filebtn">Import file<input id="import-file" type="file" accept=".json,application/json" hidden></label>
+      <button id="import-file-btn" type="button">Import file</button>
+      <input id="import-file" type="file" accept=".json,application/json" hidden>
     </div>
     <textarea id="import-text" rows="3" placeholder="Or paste exported master JSON here"></textarea>
     <button id="import-paste" type="button">Import pasted JSON</button>

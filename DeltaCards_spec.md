@@ -69,7 +69,7 @@ Source: https://webxdc.org/docs/spec/
 ### A. First use in a chat
 
 1. Prefill `name` and `email` from `webxdc.selfName` and `webxdc.selfAddr`.
-2. Offer: **Import my card** (file picker or paste) or **Fill in manually**.
+2. Offer: **Import my card** (`webxdc.importFiles()`, `<input type=file>` as fallback, or paste) or **Fill in manually**.
 3. Cache the master card in `localStorage`.
 
 ### B. Share in this chat
@@ -88,6 +88,15 @@ There is no silent cross-chat broadcast. The flow is:
 3. In each other chat's instance, choose **Import newer master**.
 4. The app shows a diff limited to the fields already shared in that chat, and asks "Publish update?". One tap publishes.
 5. Fields not previously shared in that chat are never added automatically.
+
+Hint shown next to **Export master**: "Send your master card to your Saved Messages chat. It is your backup and moves with you to a new device." This is a recommendation only. The app cannot check that it happened or choose the target chat.
+
+`webxdc.importFiles()` cannot open Saved Messages directly. Delta Chat's picker is documented to list recent sent and received attachments, so a file sent to Saved Messages may appear there, but this depends on the platform and must be tested.
+
+### C2. New device
+
+1. Open each chat's instance. Published fields and toggles are restored from replay.
+2. To edit, **Import master** and pick the file from Saved Messages. Fields never published in that chat, and the v1.1 signing key, exist only in this file.
 
 ### D. Directory and export
 
@@ -154,4 +163,5 @@ Languages: EN and SV, as in NostCard.
 - Does Resend keep a single instance for old and new members, and can anyone other than the original sender use it?
 - What is the maximum update payload size?
 - Is a Saved Messages instance good enough as the "home" for the master file, or is a plain file simpler for users?
+- Does `importFiles()` show a file sent to Saved Messages in its recent-attachments list on Android, iOS and desktop?
 - Should the master card include a PGP key, given that Delta Chat already handles its own encryption keys?
