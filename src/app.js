@@ -64,8 +64,11 @@ function formatDate(ms) {
   return new Date(ms).toLocaleString(navigator.language, { dateStyle: 'medium', timeStyle: 'short' });
 }
 
+let statusTimer;
 function setStatus(text) {
   $('status').textContent = text;
+  clearTimeout(statusTimer);
+  statusTimer = setTimeout(() => { $('status').textContent = ''; }, 6000);
 }
 
 function downloadFile(name, text, mime) {
@@ -232,8 +235,9 @@ function importMaster(text) {
     setStatus('Not a DeltaCard master file.');
     return;
   }
-  if (master.rev > 0 && imported.rev <= master.rev) {
-    setStatus('The imported master is not newer than the one here. Ignored.');
+  // Same rev means the same file again, which is fine; only strictly older files are refused.
+  if (master.rev > 0 && imported.rev < master.rev) {
+    setStatus('The imported master is older than the one here. Ignored.');
     return;
   }
   master = imported;
@@ -245,6 +249,11 @@ function importMaster(text) {
   }
   buildForm();
   setStatus('Master card imported.');
+  if ($('autopublish').checked) {
+    publish();
+    setStatus('Master card imported and published.');
+    return;
+  }
   renderDiff();
 }
 
@@ -278,6 +287,8 @@ $('import-file').onchange = async (e) => {
   e.target.value = '';
 };
 $('import-paste').onclick = () => importMaster($('import-text').value);
+$('autopublish').checked = store.get('dc_autopublish', false);
+$('autopublish').onchange = (e) => store.set('dc_autopublish', e.target.checked);
 $('spoof').onclick = () => {
   const victim = Object.keys(cards).find((a) => a !== selfAddr) ?? 'victim@example.org';
   const rev = nextRev(cards[victim]?.rev ?? 0, Date.now());

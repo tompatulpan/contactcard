@@ -20,5 +20,7 @@ button.primary { background: #2f6fed; color: #fff; border-color: #2f6fed; }
 .detail dt { font-size: 0.8rem; color: #5b6068; margin-top: 6px; }
 .detail dd { margin: 0; word-break: break-word; }
 #diff { background: #fff; border: 1px solid #d8dbe0; border-radius: 8px; padding: 10px; }
+#status { position: fixed; left: 12px; right: 12px; bottom: 12px; max-width: 616px; margin: 0 auto; padding: 10px 12px; background: #1c1e21; color: #fff; border-radius: 8px; z-index: 10; }
+#status:empty { display: none; }
 #diff .from { text-decoration: line-through; color: #a33; }
 #diff .to { color: #1a7f37; }
