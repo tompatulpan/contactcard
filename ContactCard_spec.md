@@ -1,6 +1,6 @@
 # Contact Card — Specification v2.0 (draft)
 
-Supersedes the v1.0 sketch in `DeltaCards_sketch.txt`. Rewritten around what WebXDC actually allows.
+Rewritten around what WebXDC actually allows.
 
 ## 1. Vision
 
