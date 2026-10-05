@@ -190,14 +190,37 @@ function commitForm() {
   store.set('dc_share', shareKeys);
 }
 
+function liveCardCount(includeSelf) {
+  const addrs = new Set(Object.values(cards).filter((c) => !c.revoked).map((c) => c.addr));
+  if (includeSelf) addrs.add(selfAddr);
+  else addrs.delete(selfAddr);
+  return addrs.size;
+}
+
 function publish() {
   commitForm();
   const rev = nextRev(cards[selfAddr]?.rev ?? 0, Date.now());
   const payload = buildCardPayload(master, shareKeys, selfAddr, rev);
-  const count = new Set([...Object.keys(cards), selfAddr]).size;
+  const count = liveCardCount(true);
   webxdc.sendUpdate({ payload, info: `${selfName} updated their card`, summary: `${count} cards` }, '');
   setStatus('Published to this chat.');
   $('diff').hidden = true;
+}
+
+function stopSharing() {
+  if (Object.keys(ownPublished()).length === 0) {
+    setStatus('Nothing is shared in this chat.');
+    return;
+  }
+  // Keep the toggles so publishing again later is one tap.
+  if (shareKeys === null) {
+    shareKeys = Object.keys(ownPublished()).filter((k) => k !== 'name');
+    store.set('dc_share', shareKeys);
+  }
+  const rev = nextRev(cards[selfAddr].rev, Date.now());
+  const payload = { t: 'revoke', v: 1, addr: selfAddr, rev };
+  webxdc.sendUpdate({ payload, info: `${selfName} stopped sharing their card`, summary: `${liveCardCount(false)} cards` }, '');
+  setStatus('Stopped sharing in this chat.');
 }
 
 function renderDiff() {
@@ -280,6 +303,22 @@ $('save-master').onclick = () => {
   renderDiff();
 };
 $('publish').onclick = publish;
+
+let stopTimer = null;
+function disarmStop() {
+  clearTimeout(stopTimer);
+  stopTimer = null;
+  $('stop-sharing').textContent = 'Stop sharing here';
+}
+$('stop-sharing').onclick = () => {
+  if (stopTimer === null) {
+    $('stop-sharing').textContent = 'Tap again to confirm';
+    stopTimer = setTimeout(disarmStop, 5000);
+    return;
+  }
+  disarmStop();
+  stopSharing();
+};
 $('export-master').onclick = () => downloadFile('deltacard-master.json', exportMaster(), 'application/json');
 // importFiles opens Delta Chat's picker with recent attachments; the plain input is the fallback.
 $('import-file-btn').onclick = async () => {
