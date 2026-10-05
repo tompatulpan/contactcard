@@ -87,6 +87,32 @@ export function diffMaster(master, sharedKeys, publishedFields) {
   return changes;
 }
 
+// The published card is the only ordering every device agrees on: a master file
+// is stale only when the chat has moved past the rev it was exported from and
+// the shared fields actually differ. A device-local master.rev is never compared.
+export function isStaleImport(imported, published) {
+  if (!published || published.revoked) return false;
+  if (imported.rev >= published.rev) return false;
+  return diffMaster(imported, Object.keys(published.fields), published.fields).length > 0;
+}
+
+// True when another device published a newer card than the local master.
+// The banner must then offer adoption, not republishing stale local values.
+export function isBehindChat(master, published) {
+  return !!published && !published.revoked && master.rev < published.rev;
+}
+
+// Merges a newer published card into the local master. Only keys the chat card
+// actually carries are taken: a key missing from the card may merely be unshared
+// on the publishing device, so adoption never deletes local values.
+export function adoptPublished(master, published) {
+  const fields = { ...master.fields };
+  for (const key of Object.keys(published.fields)) {
+    fields[key] = published.fields[key];
+  }
+  return { ...master, rev: published.rev, fields };
+}
+
 const escapeVCard = (s) =>
   s.replace(/\\/g, '\\\\').replace(/\r?\n/g, '\\n').replace(/;/g, '\\;').replace(/,/g, '\\,');
 

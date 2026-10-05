@@ -83,11 +83,12 @@ Source: https://webxdc.org/docs/spec/
 
 There is no silent cross-chat broadcast. The flow is:
 
-1. In any instance, edit the master card. `rev` is bumped.
+1. In any instance, edit the master card. `rev` is bumped. Publishing also raises the master's `rev` to the card's `rev`, so an exported file stays in the chat's ordering.
 2. **Export master** saves a `.deltacard.json`, either as a download or through `sendToChat()` to Saved Messages.
-3. In each other chat's instance, choose **Import newer master**.
+3. In each other chat's instance, choose **Import newer master**. An import is refused only when the card published in that chat is newer than the file's `rev` and the shared fields differ. A device-local `master.rev` is never compared: two devices' clocks make that comparison meaningless.
 4. The app shows a diff limited to the fields already shared in that chat, and asks "Publish update?". One tap publishes.
 5. Fields not previously shared in that chat are never added automatically.
+6. If the card published in this chat is newer than the local master (`master.rev` is behind the card's `rev`), the banner offers the reverse action: **Adopt into my master** copies the published values into the local master. Keys the chat card does not carry stay untouched, so fields merely unshared on the publishing device are not deleted.
 
 Hint shown next to **Export master**: "Send your master card to your Saved Messages chat. It is your backup and moves with you to a new device." This is a recommendation only. The app cannot check that it happened or choose the target chat.
 
@@ -148,7 +149,7 @@ Languages: EN and SV, as in NostCard.
 
 - Vanilla HTML, CSS and JS with no build step. Zip to `.xdc` with `manifest.toml` and `icon.png`.
 - Test with `webxdc-dev` and with real Delta Chat on Android, iOS and desktop.
-- Pure functions in a separate module, unit-testable without a browser: `reduceUpdates`, `buildCardPayload`, `diffMaster`, `toVCard`.
+- Pure functions in a separate module, unit-testable without a browser: `reduceUpdates`, `buildCardPayload`, `diffMaster`, `isStaleImport`, `isBehindChat`, `adoptPublished`, `toVCard`.
 
 ## 10. Milestones
 

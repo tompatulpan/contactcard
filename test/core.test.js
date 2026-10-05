@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildCardPayload, diffMaster, nextRev, parseMaster, reduceUpdates, toVCard } from '../src/core.js';
+import { adoptPublished, buildCardPayload, diffMaster, isBehindChat, isStaleImport, nextRev, parseMaster, reduceUpdates, toVCard } from '../src/core.js';
 
 const master = {
   format: 'deltacard-master',
@@ -137,4 +137,43 @@ test('master: older files without share load with no defaults; invalid files are
   assert.equal(parseMaster({ format: 'other', fields: {} }), null);
   assert.equal(parseMaster({ format: 'deltacard-master', fields: null }), null);
   assert.equal(parseMaster(null), null);
+});
+
+test('import guard: an older file is stale only when its shared fields differ from the published card', () => {
+  const published = { addr: 'a@x', rev: 20, revoked: false, fields: { name: 'A', mobile: 'new' } };
+  const olderSame = { fields: { name: 'A', mobile: 'new', org: 'unshared' }, rev: 10 };
+  const olderDiffers = { fields: { name: 'A', mobile: 'old' }, rev: 10 };
+  assert.equal(isStaleImport(olderSame, published), false);
+  assert.equal(isStaleImport(olderDiffers, published), true);
+});
+
+test('import guard: newer files and missing publications are accepted', () => {
+  const published = { addr: 'a@x', rev: 20, revoked: false, fields: { name: 'A', mobile: 'new' } };
+  const newerDiffers = { fields: { name: 'A', mobile: 'newer still' }, rev: 30 };
+  assert.equal(isStaleImport(newerDiffers, published), false);
+  assert.equal(isStaleImport({ fields: { name: 'A' }, rev: 0 }, undefined), false);
+  assert.equal(isStaleImport({ fields: { name: 'A' }, rev: 0 }, { ...published, revoked: true }), false);
+});
+
+test('diff direction: the banner adopts only when the chat card is newer', () => {
+  const published = { addr: 'a@x', rev: 20, revoked: false, fields: { name: 'A' } };
+  assert.equal(isBehindChat({ rev: 10 }, published), true);
+  assert.equal(isBehindChat({ rev: 20 }, published), false);
+  assert.equal(isBehindChat({ rev: 30 }, published), false);
+  assert.equal(isBehindChat({ rev: 0 }, undefined), false);
+  assert.equal(isBehindChat({ rev: 10 }, { ...published, revoked: true }), false);
+});
+
+test('adopt: a newer published card overwrites only the keys it carries', () => {
+  const local = { fields: { name: 'Old', mobile: '111', note: 'private' }, rev: 10 };
+  const published = { addr: 'a@x', rev: 20, revoked: false, fields: { name: 'New', mobile: '222' } };
+  const adopted = adoptPublished(local, published);
+  assert.deepEqual(adopted.fields, { name: 'New', mobile: '222', note: 'private' });
+  assert.equal(adopted.rev, 20);
+});
+
+test('adopt: keys absent from the chat card stay local', () => {
+  const local = { fields: { name: 'A', mobile: '111' }, rev: 20 };
+  const published = { addr: 'a@x', rev: 30, revoked: false, fields: { name: 'A' } };
+  assert.deepEqual(adoptPublished(local, published).fields, { name: 'A', mobile: '111' });
 });

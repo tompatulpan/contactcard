@@ -1,8 +1,11 @@
 import {
+  adoptPublished,
   FIELD_KEYS,
   FIELD_LABELS,
   buildCardPayload,
   diffMaster,
+  isBehindChat,
+  isStaleImport,
   nextRev,
   parseMaster,
   reduceUpdates,
@@ -181,7 +184,7 @@ const readShareKeys = () => FIELD_KEYS.filter((k) => k !== 'name' && $(`s-${k}`)
 // Bumps master.rev only when the content actually changed; share toggles never bump it.
 function commitForm() {
   const fields = readFormFields();
-  if (JSON.stringify(fields) !== JSON.stringify(master.fields) || master.rev === 0) {
+  if (JSON.stringify(fields) !== JSON.stringify(master.fields)) {
     master = { ...master, rev: nextRev(master.rev, Date.now()), fields };
   }
   shareKeys = readShareKeys();
@@ -200,6 +203,12 @@ function liveCardCount(includeSelf) {
 function publish() {
   commitForm();
   const rev = nextRev(cards[selfAddr]?.rev ?? 0, Date.now());
+  // Keep master.rev in the chat's ordering, so an exported master file can be
+  // compared against the card published in this chat on any device.
+  if (rev > master.rev) {
+    master = { ...master, rev };
+    store.set('dc_master', master);
+  }
   const payload = buildCardPayload(master, shareKeys, selfAddr, rev);
   const count = liveCardCount(true);
   webxdc.sendUpdate({ payload, info: `${selfName} updated their card`, summary: `${count} cards` }, '');
@@ -230,19 +239,48 @@ function renderDiff() {
     box.hidden = true;
     return;
   }
-  const changes = diffMaster(master, currentShare(), published.fields);
+  // Another device published a newer card: offer to adopt it instead of
+  // silently republishing this device's stale local values over it.
+  const behind = isBehindChat(master, published);
+  const keys = behind ? Object.keys(published.fields) : currentShare();
+  const changes = diffMaster(master, keys, published.fields);
   if (changes.length === 0) {
     box.hidden = true;
     return;
   }
-  box.replaceChildren(el('strong', {}, 'Your master card changed. Update this chat?'));
+  box.replaceChildren(
+    el('strong', {}, behind
+      ? 'The card in this chat is newer than the one here. Adopt it into your master?'
+      : 'Your master card changed. Update this chat?'),
+  );
   for (const c of changes) {
+    // In adopt mode the local master is what changes, so the arrow runs local → published.
+    const from = behind ? c.to : c.from;
+    const to = behind ? c.from : c.to;
     box.append(
-      el('div', {}, `${FIELD_LABELS[c.key]}: `, el('span', { class: 'from' }, c.from || '(empty)'), ' → ', el('span', { class: 'to' }, c.to || '(removed)')),
+      el('div', {}, `${FIELD_LABELS[c.key]}: `, el('span', { class: 'from' }, from || '(empty)'), ' → ', el('span', { class: 'to' }, to || '(removed)')),
     );
   }
-  box.append(el('div', { class: 'row' }, el('button', { class: 'primary', onclick: publish }, 'Publish update')));
+  box.append(
+    el(
+      'div',
+      { class: 'row' },
+      behind
+        ? el('button', { class: 'primary', onclick: adoptFromChat }, 'Adopt into my master')
+        : el('button', { class: 'primary', onclick: publish }, 'Publish update'),
+    ),
+  );
   box.hidden = false;
+}
+
+function adoptFromChat() {
+  const published = cards[selfAddr];
+  if (!published || published.revoked || !isBehindChat(master, published)) return;
+  master = adoptPublished(master, published);
+  store.set('dc_master', master);
+  buildForm();
+  renderDiff();
+  setStatus('The card published in this chat is now your master.');
 }
 
 function importMaster(text) {
@@ -258,9 +296,10 @@ function importMaster(text) {
     setStatus('Not a DeltaCard master file.');
     return;
   }
-  // Same rev means the same file again, which is fine; only strictly older files are refused.
-  if (master.rev > 0 && imported.rev < master.rev) {
-    setStatus('The imported master is older than the one here. Ignored.');
+  // The card published in this chat is the only ordering shared with the
+  // exporting device; the local master.rev is never compared across devices.
+  if (isStaleImport(imported, cards[selfAddr])) {
+    setStatus('This chat has a newer card than this file. Publish first, then export a new master.');
     return;
   }
   master = imported;
