@@ -1,5 +1,5 @@
 {
-  "name": "deltacard",
+  "name": "contactcard",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -7,6 +7,6 @@
   "scripts": {
     "test": "node --test test/",
     "dev": "npx @webxdc/webxdc-dev run ./src",
-    "build": "mkdir -p dist && rm -f dist/deltacard.xdc && cd src && zip -qr ../dist/deltacard.xdc . && echo built dist/deltacard.xdc"
+    "build": "mkdir -p dist && rm -f dist/contactcard.xdc && cd src && zip -qr ../dist/contactcard.xdc . && echo built dist/contactcard.xdc"
   }
 }

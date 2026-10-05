@@ -1,4 +1,4 @@
-# DeltaCard — Specification v2.0 (draft)
+# Contact Card — Specification v2.0 (draft)
 
 Supersedes the v1.0 sketch in `DeltaCards_sketch.txt`. Rewritten around what WebXDC actually allows.
 
@@ -30,11 +30,11 @@ Source: https://webxdc.org/docs/spec/
 
 ## 4. Data model
 
-### Master card (JSON, file extension `.deltacard.json`)
+### Master card (JSON, file extension `.contactcard.json`)
 
 ```json
 {
-  "format": "deltacard-master",
+  "format": "contactcard-master",
   "v": 1,
   "rev": 1759400000000,
   "fields": {
@@ -84,7 +84,7 @@ Source: https://webxdc.org/docs/spec/
 There is no silent cross-chat broadcast. The flow is:
 
 1. In any instance, edit the master card. `rev` is bumped. Publishing also raises the master's `rev` to the card's `rev`, so an exported file stays in the chat's ordering.
-2. **Export master** saves a `.deltacard.json`, either as a download or through `sendToChat()` to Saved Messages.
+2. **Export master** saves a `.contactcard.json`, either as a download or through `sendToChat()` to Saved Messages.
 3. In each other chat's instance, choose **Import newer master**. An import is refused only when the card published in that chat is newer than the file's `rev` and the shared fields differ. A device-local `master.rev` is never compared: two devices' clocks make that comparison meaningless.
 4. The app shows a diff limited to the fields already shared in that chat, and asks "Publish update?". One tap publishes.
 5. Fields not previously shared in that chat are never added automatically.

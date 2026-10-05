@@ -47,7 +47,7 @@ const store = {
 
 // localStorage is only a cache; the card directory is rebuilt from replayed updates.
 let master = store.get('dc_master', null) || {
-  format: 'deltacard-master',
+  format: 'contactcard-master',
   v: 1,
   rev: 0,
   fields: { name: selfName, email: selfAddr },
@@ -293,7 +293,7 @@ function importMaster(text) {
   }
   const imported = parseMaster(data);
   if (!imported) {
-    setStatus('Not a DeltaCard master file.');
+    setStatus('Not a Contact Card master file.');
     return;
   }
   // The card published in this chat is the only ordering shared with the
@@ -358,7 +358,7 @@ $('stop-sharing').onclick = () => {
   disarmStop();
   stopSharing();
 };
-$('export-master').onclick = () => downloadFile('deltacard-master.json', exportMaster(), 'application/json');
+$('export-master').onclick = () => downloadFile('contactcard-master.json', exportMaster(), 'application/json');
 // importFiles opens Delta Chat's picker with recent attachments; the plain input is the fallback.
 $('import-file-btn').onclick = async () => {
   if (typeof webxdc.importFiles !== 'function') {
@@ -389,7 +389,7 @@ $('spoof').onclick = () => {
 
 if (typeof webxdc.sendToChat === 'function') {
   $('export-master').after(
-    el('button', { type: 'button', onclick: () => sendFileToChat('deltacard-master.json', exportMaster(), 'My DeltaCard master') }, 'Send master to a chat'),
+    el('button', { type: 'button', onclick: () => sendFileToChat('contactcard-master.json', exportMaster(), 'My Contact Card master') }, 'Send master to a chat'),
   );
 }
 

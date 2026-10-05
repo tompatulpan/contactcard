@@ -37,9 +37,9 @@ export function sanitizeShare(keys) {
 }
 
 export function parseMaster(data) {
-  if (!data || data.format !== 'deltacard-master' || typeof data.fields !== 'object' || data.fields === null) return null;
+  if (!data || data.format !== 'contactcard-master' || typeof data.fields !== 'object' || data.fields === null) return null;
   return {
-    format: 'deltacard-master',
+    format: 'contactcard-master',
     v: 1,
     rev: Number.isFinite(data.rev) ? data.rev : 0,
     fields: sanitizeFields(data.fields),

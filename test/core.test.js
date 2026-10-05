@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { adoptPublished, buildCardPayload, diffMaster, isBehindChat, isStaleImport, nextRev, parseMaster, reduceUpdates, toVCard } from '../src/core.js';
 
 const master = {
-  format: 'deltacard-master',
+  format: 'contactcard-master',
   v: 1,
   rev: 1,
   fields: {
@@ -122,7 +122,7 @@ test('vCard: empty fields are skipped and addr is the FN fallback', () => {
 
 test('master: default share toggles survive export and import, and are sanitized', () => {
   const parsed = parseMaster({
-    format: 'deltacard-master',
+    format: 'contactcard-master',
     rev: 5,
     fields: { name: 'A', mobile: '1', junk: 'x' },
     share: ['mobile', 'name', 'bogus', '__proto__'],
@@ -133,9 +133,9 @@ test('master: default share toggles survive export and import, and are sanitized
 });
 
 test('master: older files without share load with no defaults; invalid files are rejected', () => {
-  assert.deepEqual(parseMaster({ format: 'deltacard-master', rev: 1, fields: { name: 'A' } }).share, []);
+  assert.deepEqual(parseMaster({ format: 'contactcard-master', rev: 1, fields: { name: 'A' } }).share, []);
   assert.equal(parseMaster({ format: 'other', fields: {} }), null);
-  assert.equal(parseMaster({ format: 'deltacard-master', fields: null }), null);
+  assert.equal(parseMaster({ format: 'contactcard-master', fields: null }), null);
   assert.equal(parseMaster(null), null);
 });
 
