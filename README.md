@@ -25,8 +25,8 @@ npm run build  # zip src/ into dist/contactcard.xdc
 
 ## Status
 
-Work in progress. The current design and roadmap are in [`ContactCard_spec.md`](ContactCard_spec.md). Cards carry a claimed sender address only; WebXDC cannot authenticate senders, so the UI labels cards as claims, never as verified. Signed cards with key pinning are planned as a later milestone.
+Work in progress - Testing. The current design and roadmap are in [`ContactCard_spec.md`](ContactCard_spec.md). Cards carry a claimed sender address only; WebXDC cannot authenticate senders, so the UI labels cards as claims, never as verified. Signed cards with key pinning are planned as a later milestone.
 
 ## License
 
-TBD
+MIT
