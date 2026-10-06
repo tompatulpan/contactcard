@@ -74,7 +74,19 @@ function setStatus(text) {
   statusTimer = setTimeout(() => { $('status').textContent = ''; }, 6000);
 }
 
-function downloadFile(name, text, mime) {
+// WKWebView (iOS) does not open downloads for blob: anchors, so the
+// anchor-click trick below does nothing there. The webxdc way to get a file
+// out is sendToChat; the user sends the .vcf to a chat and taps it to add
+// the contact. See https://webxdc.org/docs/faq/compat.html
+const IS_IOS =
+  /iP(hone|ad|od)/.test(navigator.userAgent) ||
+  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+function downloadFile(name, text, mime, chatMessage = '') {
+  if (IS_IOS && typeof webxdc.sendToChat === 'function') {
+    sendFileToChat(name, text, chatMessage);
+    return;
+  }
   const url = URL.createObjectURL(new Blob([text], { type: mime }));
   const a = el('a', { href: url, download: name });
   document.body.append(a);
@@ -149,7 +161,7 @@ function renderDetail() {
   const row = el(
     'div',
     { class: 'row' },
-    el('button', { class: 'primary', onclick: () => downloadFile(fileName, vcf, 'text/vcard') }, '📥 Export to phone contacts'),
+    el('button', { class: 'primary', onclick: () => downloadFile(fileName, vcf, 'text/vcard', `${card.fields.name || 'Contact'} contact card`) }, '📥 Export to phone contacts'),
   );
   if (typeof webxdc.sendToChat === 'function') {
     row.append(el('button', { onclick: () => sendFileToChat(fileName, vcf, card.fields.name || '') }, 'Send .vcf to a chat'));
@@ -358,7 +370,7 @@ $('stop-sharing').onclick = () => {
   disarmStop();
   stopSharing();
 };
-$('export-master').onclick = () => downloadFile('contactcard-master.json', exportMaster(), 'application/json');
+$('export-master').onclick = () => downloadFile('contactcard-master.json', exportMaster(), 'application/json', 'My Contact Card master');
 // importFiles opens Delta Chat's picker with recent attachments; the plain input is the fallback.
 $('import-file-btn').onclick = async () => {
   if (typeof webxdc.importFiles !== 'function') {
