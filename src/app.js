@@ -163,10 +163,15 @@ function renderDetail() {
     { class: 'row' },
     el('button', { class: 'primary', onclick: () => downloadFile(fileName, vcf, 'text/vcard', `${card.fields.name || 'Contact'} contact card`) }, '📥 Export to phone contacts'),
   );
-  if (typeof webxdc.sendToChat === 'function') {
+  // On iOS the primary export already goes through sendToChat, so a second
+  // identical button would only duplicate it.
+  if (typeof webxdc.sendToChat === 'function' && !IS_IOS) {
     row.append(el('button', { onclick: () => sendFileToChat(fileName, vcf, card.fields.name || '') }, 'Send .vcf to a chat'));
   }
   box.append(el('div', { class: 'detail' }, dl, row));
+  if (IS_IOS) {
+    box.append(el('p', { class: 'hint' }, 'iOS: pick a chat for the .vcf message, send it, then tap the file there to add the contact.'));
+  }
 }
 
 // ---- My card tab ----
@@ -399,7 +404,9 @@ $('spoof').onclick = () => {
   webxdc.sendUpdate({ payload, info: 'A card was updated' }, '');
 };
 
-if (typeof webxdc.sendToChat === 'function') {
+// On iOS, export-master already routes through sendToChat (see downloadFile),
+// so the extra "Send master to a chat" button would duplicate it.
+if (typeof webxdc.sendToChat === 'function' && !IS_IOS) {
   $('export-master').after(
     el('button', { type: 'button', onclick: () => sendFileToChat('contactcard-master.json', exportMaster(), 'My Contact Card master') }, 'Send master to a chat'),
   );
